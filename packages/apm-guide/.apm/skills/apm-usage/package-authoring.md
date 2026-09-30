@@ -99,6 +99,14 @@ Per-primitive scan paths for `apm install`:
 | agent | `.apm/agents/` | Yes: `*.agent.md` at root |
 | skill | `.apm/skills/<name>/` | Yes: `skills/<name>/` (SKILL_BUNDLE or MARKETPLACE_PLUGIN) |
 
+Own-project and Git-backed package installs skip symlinked agent source
+files and directories, including `.apm/agents -> ../agents`.
+`apm install` warns with the skipped source path. Use real files and
+directories under `.apm/agents/` or real `*.agent.md` files at root, then
+rerun `apm install`. Local-path dependencies (`./...` or `../...`) still work:
+contained symlinks are validated and copied as real files into
+`apm_modules/` before agent discovery.
+
 **Recommendation for marketplace publishers:** use `.apm/<type>/` for
 every primitive. This is the only layout that is symmetric between
 `apm pack` and `apm install`.
@@ -172,6 +180,9 @@ becomes `PostToolUse` in Claude) and rewrites path variables
 (`${PLUGIN_ROOT}`, `${CURSOR_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_ROOT}`) to
 the correct target-specific form. Kiro materializes one JSON document per
 hook action under `.kiro/hooks/`.
+
+For Codex, APM wraps flat command entries in hook groups containing a
+nested `hooks` array in `.codex/hooks.json`.
 
 <!-- Keep this table synchronized with docs/src/content/docs/producer/author-primitives/hooks-and-commands.md. -->
 
@@ -336,15 +347,21 @@ tags: [security, validation]
 
 `applyTo` accepts a single glob (`"**/*.py"`) or a comma-separated list
 (`"**/src/**,**/api/**"`). The comma-separated string form is the recommended
-way to specify multiple patterns, as it is portably expanded into target-specific
-YAML arrays/lists (under `paths:` / `globs:` / `fileMatchPattern:`) across
-Claude, Cursor, Windsurf, Kiro, and Antigravity.
+way to specify multiple patterns, as it is portably expanded into
+target-specific YAML arrays/lists (under `paths:` / `globs:` /
+`fileMatchPattern:`) across Claude, Windsurf, Kiro, and Antigravity.
+For Cursor, APM emits one comma-joined scalar rather than a YAML list
+(`globs: **/src/**, **/api/**`). Ordinary patterns stay unquoted; unsafe
+characters are escaped. Descriptions keep printable non-ASCII text readable
+and are quoted when needed to preserve their value.
 
 A YAML sequence (e.g., `applyTo: ['**/*.py', '**/tests/**/*.py']`) is
 normalized to the same comma-separated OR expression for distributed
 placement and target-native installation. Use a sequence when its source
 readability matters. To match a literal comma in a filename, escape it as
-`\,`.
+`\,`. APM preserves pattern boundaries when re-joining, including the
+escape in Cursor's scalar. Cursor's documentation does not specify
+literal-comma matching; verify such patterns in your Cursor version.
 
 Commas inside brace alternation (`**/*.{css,scss}`) are part of the glob
 and are NOT separators -- only top-level commas split the list. On Copilot
