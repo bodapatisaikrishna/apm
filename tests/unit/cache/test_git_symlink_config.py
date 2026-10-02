@@ -99,6 +99,41 @@ def test_network_env_preserves_effective_symlink_setting(
     assert Path(config).read_bytes() == original_config
 
 
+@pytest.mark.parametrize(
+    ("parent", "child", "expected"),
+    [
+        ("true", None, "true"),
+        ("false", None, "false"),
+        ("true", "false", "false"),
+        ("false", "true", "true"),
+    ],
+)
+def test_isolated_child_preserves_parent_command_intent(
+    tmp_path: Path,
+    config_env: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    parent: str,
+    child: str | None,
+    expected: str,
+) -> None:
+    """An auth-isolated child must not demote the caller's explicit setting."""
+    repo = tmp_path / "repo"
+    _git(config_env, "init", "--quiet", "--template=", str(repo))
+    _git(config_env, "-C", str(repo), "config", "core.symlinks", "false")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.symlinks")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", parent)
+    config_env.update(
+        GIT_CONFIG_COUNT="1",
+        GIT_CONFIG_KEY_0="core.symlinks" if child is not None else "credential.helper",
+        GIT_CONFIG_VALUE_0=child if child is not None else "",
+    )
+
+    result = git_env.git_network_env("https://example.test/org/repo.git", config_env, worktree=repo)
+
+    assert _git(result, "-C", str(repo), "config", "--bool", "core.symlinks") == expected
+
+
 @pytest.fixture
 def symlink_source(tmp_path: Path, config_env: dict[str, str]) -> Path:
     """Commit a real Git symlink without needing OS symlink-create privileges."""

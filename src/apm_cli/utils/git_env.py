@@ -1005,13 +1005,14 @@ def _materialize_git_config_snapshot(
         else None
     )
     retained: list[tuple[str, str]] = []
-    symlinks: str | None = None
+    symlinks: GitConfigEntry | None = None
     for entry in snapshot.entries:
         normalized = entry.key.lower()
         if normalized == "core.symlinks":
-            # Keep Git init's local capability result and higher-priority
-            # command intent. Deduplicating repeated values would lose order.
-            symlinks = entry.value
+            # Parent command entries can precede child file entries after
+            # merging. Keep command intent above Git init's capability result.
+            if symlinks is None or symlinks.scope != "command" or entry.scope == "command":
+                symlinks = entry
             continue
         if entry.scope in {"local", "worktree"} and not _is_scope_sensitive_network_config(entry):
             continue
@@ -1037,7 +1038,7 @@ def _materialize_git_config_snapshot(
         retained.append((entry.key, entry.value))
 
     if symlinks is not None:
-        retained.append(("core.symlinks", symlinks))
+        retained.append(("core.symlinks", symlinks.value))
 
     if auth_fence is not None:
         if auth_fence.suppress_helpers:
