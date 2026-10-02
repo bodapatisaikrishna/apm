@@ -483,6 +483,15 @@ MUTATIONS: tuple[CompoundMutation, ...] = (
         ),
     ),
     CompoundMutation(
+        "audit-replay-subset-checkout-root",
+        AUDIT_RULE,
+        "src/apm_cli/policy/ci_checks.py",
+        _replace(
+            "    modules_root = (\n        prepared_replay.modules_root\n",
+            "    modules_root = (\n        project_root / APM_MODULES_DIR\n",
+        ),
+    ),
+    CompoundMutation(
         "audit-replay-config-root",
         AUDIT_RULE,
         "src/apm_cli/policy/ci_checks.py",

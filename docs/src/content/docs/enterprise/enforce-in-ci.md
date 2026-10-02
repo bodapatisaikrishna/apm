@@ -120,7 +120,7 @@ jobs:
 
 `setup-only: true` leaves every deployed file exactly as checked out.
 `apm audit --ci` now self-hydrates its scratch replay from `apm.lock.yaml`,
-so drift and `config-consistency` still run even when the checkout has no
+so drift, `config-consistency`, and `skill-subset-consistency` still run even when the checkout has no
 live `apm_modules/` tree. If the scratch replay itself cannot be materialized,
 the audit fails closed instead of reporting a green skip. The
 `content-integrity` check still verifies that every deployed file's SHA-256
