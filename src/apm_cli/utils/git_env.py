@@ -1005,8 +1005,14 @@ def _materialize_git_config_snapshot(
         else None
     )
     retained: list[tuple[str, str]] = []
+    symlinks: str | None = None
     for entry in snapshot.entries:
         normalized = entry.key.lower()
+        if normalized == "core.symlinks":
+            # Keep Git init's local capability result and higher-priority
+            # command intent. Deduplicating repeated values would lose order.
+            symlinks = entry.value
+            continue
         if entry.scope in {"local", "worktree"} and not _is_scope_sensitive_network_config(entry):
             continue
         if normalized == "include.path" or (
@@ -1029,6 +1035,9 @@ def _materialize_git_config_snapshot(
             if auth_fence.suppress_helpers and _is_credential_helper_key(normalized):
                 continue
         retained.append((entry.key, entry.value))
+
+    if symlinks is not None:
+        retained.append(("core.symlinks", symlinks))
 
     if auth_fence is not None:
         if auth_fence.suppress_helpers:

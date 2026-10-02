@@ -210,6 +210,15 @@ For the full flag reference, run `apm install --help` or see
 
 ## When things go wrong
 
+- **Windows symlink checkout.** APM preserves Git's detected `core.symlinks`
+  setting instead of letting an inherited global value override it. Explicit
+  command-scope Git settings still take precedence; APM does not change your
+  global Git configuration. When symlink creation is unavailable, Git can check
+  out a symlink as a regular file containing its target path, not the target's
+  contents. A successful checkout therefore does not guarantee that a package
+  requiring real symlinks works. Use a package that ships real source files, or
+  a symlink-capable environment; archive extraction and containment rules are
+  unchanged.
 - **Critical security finding.** Install aborts with the offending
   characters and file path. Patch upstream when you can; use
   `--force` only when you can document the exception.
